@@ -639,7 +639,7 @@ public class Empleados extends javax.swing.JFrame {
         return;
     }
 
-    if (!contrasena.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$")) {
+    if (!contrasena.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#%'?¡¿])[A-Za-z\\d@$!%*?&]{8,}$")) {
         javax.swing.JOptionPane.showMessageDialog(this, 
             "La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.",
             "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
