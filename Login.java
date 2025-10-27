@@ -18,7 +18,7 @@ public class Login extends javax.swing.JFrame {
      */
     public Login() {
         initComponents();
-        dniTF.setText("Ingrese DNI de Usuario");
+        dniTF.setText("Ingrese DNI del Usuario");
         dniTF.setForeground(Color.GRAY);
 
         contrasenaTF.setText("********");
