@@ -1,5 +1,6 @@
 package Menu;
 
+import org.mindrot.jbcrypt.BCrypt;
 
 public class Empleados extends javax.swing.JFrame {
 
@@ -10,7 +11,7 @@ public class Empleados extends javax.swing.JFrame {
 
     String sql = "SELECT dni, nombres_apellidos, celular, correo, numero_cuenta, banco, contrasena, cargo FROM empleados";
 
-    try (java.sql.Connection con = Conexion.conectar();
+    try (java.sql.Connection con = Conexion.getInstance();
          java.sql.Statement st = con.createStatement();
          java.sql.ResultSet rs = st.executeQuery(sql)) {
 
@@ -37,6 +38,35 @@ public class Empleados extends javax.swing.JFrame {
     
     public Empleados(String dniUsuario, String contrasenaUsuario) {
         initComponents();
+        // --- CONFIGURAR jComboBoxCargo ---
+        jComboBox1Cargo.removeAllItems();
+        jComboBox1Cargo.addItem("Empleado");
+        jComboBox1Cargo.addItem("Administrador");
+
+        // --- CONFIGURAR jComboBoxBancos ---
+        jComboBoxBancos.removeAllItems();
+
+        // Lista de bancos peruanos
+        String[] bancosPeru = {
+            "BCP",
+            "Interbank",
+            "BBVA",
+            "Scotiabank",
+            "Banco Pichincha",
+            "BanBif",
+            "Banco Falabella",
+            "Banco Ripley",
+            "Mibanco",
+            "Banco de la Nación"
+        };
+
+        // Agregar los bancos al combo
+        for (String b : bancosPeru) {
+            jComboBoxBancos.addItem(b);
+        }
+
+        // Permitir escribir un banco adicional
+        jComboBoxBancos.setEditable(true);
         this.dniUsuario = dniUsuario;
         this.contrasenaUsuario = contrasenaUsuario;
         setLocationRelativeTo(null);
@@ -53,9 +83,7 @@ public class Empleados extends javax.swing.JFrame {
         agregarPlaceholder(CelularTF, "Celular");
         agregarPlaceholder(CorreoTF, "Correo");
         agregarPlaceholder(NumeroDeCuenta, "Número de Cuenta");
-        agregarPlaceholder(BancoTF, "Banco");
         agregarPlaceholder(ContraseñaTF, "Contraseña");
-        agregarPlaceholder(CargoTF, "Cargo");
 
 
     // Configurar tabla vacía con encabezados
@@ -84,7 +112,6 @@ public class Empleados extends javax.swing.JFrame {
         EmpleadosVentana = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jPanel3 = new javax.swing.JPanel();
-        CargoTF = new javax.swing.JTextField();
         jPanel4 = new javax.swing.JPanel();
         IngresoVentana1 = new javax.swing.JButton();
         SalidaVentana1 = new javax.swing.JButton();
@@ -102,16 +129,16 @@ public class Empleados extends javax.swing.JFrame {
         CelularTF = new javax.swing.JTextField();
         CorreoTF = new javax.swing.JTextField();
         NumeroDeCuenta = new javax.swing.JTextField();
-        BancoTF = new javax.swing.JTextField();
-        ContraseñaTF = new javax.swing.JTextField();
         jSeparator1 = new javax.swing.JSeparator();
         jSeparator2 = new javax.swing.JSeparator();
-        jSeparator3 = new javax.swing.JSeparator();
         jSeparator4 = new javax.swing.JSeparator();
         jSeparator5 = new javax.swing.JSeparator();
         jSeparator6 = new javax.swing.JSeparator();
-        jSeparator7 = new javax.swing.JSeparator();
         jSeparator8 = new javax.swing.JSeparator();
+        jComboBox1Cargo = new javax.swing.JComboBox<>();
+        jComboBoxBancos = new javax.swing.JComboBox<>();
+        ContraseñaTF = new javax.swing.JPasswordField();
+        jLabel1 = new javax.swing.JLabel();
 
         IngresoVentana.setBackground(new java.awt.Color(248, 243, 238));
         IngresoVentana.setFont(new java.awt.Font("Roboto ExtraBold", 0, 36)); // NOI18N
@@ -186,16 +213,6 @@ public class Empleados extends javax.swing.JFrame {
 
         jPanel3.setBackground(new java.awt.Color(255, 255, 255));
         jPanel3.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
-
-        CargoTF.setForeground(new java.awt.Color(204, 204, 204));
-        CargoTF.setText("Cargo");
-        CargoTF.setBorder(null);
-        CargoTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                CargoTFActionPerformed(evt);
-            }
-        });
-        jPanel3.add(CargoTF, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 280, 340, 30));
 
         jPanel4.setBackground(new java.awt.Color(248, 243, 238));
 
@@ -340,9 +357,16 @@ public class Empleados extends javax.swing.JFrame {
             Class[] types = new Class [] {
                 java.lang.Integer.class, java.lang.String.class, java.lang.Integer.class, java.lang.String.class, java.lang.Object.class, java.lang.Object.class, java.lang.Object.class, java.lang.Object.class
             };
+            boolean[] canEdit = new boolean [] {
+                false, false, false, false, false, false, false, false
+            };
 
             public Class getColumnClass(int columnIndex) {
                 return types [columnIndex];
+            }
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
             }
         });
         jScrollPane1.setViewportView(InformacionEmpleados);
@@ -407,49 +431,40 @@ public class Empleados extends javax.swing.JFrame {
         });
         jPanel3.add(NumeroDeCuenta, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 110, 340, 30));
 
-        BancoTF.setForeground(new java.awt.Color(204, 204, 204));
-        BancoTF.setText("Banco");
-        BancoTF.setBorder(null);
-        BancoTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                BancoTFActionPerformed(evt);
-            }
-        });
-        jPanel3.add(BancoTF, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 160, 340, 30));
-
-        ContraseñaTF.setForeground(new java.awt.Color(204, 204, 204));
-        ContraseñaTF.setText("Contraseña");
-        ContraseñaTF.setBorder(null);
-        ContraseñaTF.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                ContraseñaTFActionPerformed(evt);
-            }
-        });
-        jPanel3.add(ContraseñaTF, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 220, 340, 30));
-
         jSeparator1.setForeground(new java.awt.Color(0, 0, 0));
         jPanel3.add(jSeparator1, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 140, 340, 10));
 
         jSeparator2.setForeground(new java.awt.Color(0, 0, 0));
         jPanel3.add(jSeparator2, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 140, 340, 10));
 
-        jSeparator3.setForeground(new java.awt.Color(0, 0, 0));
-        jPanel3.add(jSeparator3, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 190, 340, 10));
-
         jSeparator4.setForeground(new java.awt.Color(0, 0, 0));
         jPanel3.add(jSeparator4, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 190, 340, 10));
 
         jSeparator5.setForeground(new java.awt.Color(0, 0, 0));
-        jPanel3.add(jSeparator5, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 250, 340, 10));
+        jPanel3.add(jSeparator5, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 260, 340, 10));
 
         jSeparator6.setForeground(new java.awt.Color(0, 0, 0));
         jPanel3.add(jSeparator6, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 250, 340, 10));
 
-        jSeparator7.setForeground(new java.awt.Color(0, 0, 0));
-        jPanel3.add(jSeparator7, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 310, 340, 10));
-
         jSeparator8.setForeground(new java.awt.Color(0, 0, 0));
         jPanel3.add(jSeparator8, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 310, 340, 10));
+
+        jComboBox1Cargo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel3.add(jComboBox1Cargo, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 290, 340, -1));
+
+        jComboBoxBancos.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel3.add(jComboBoxBancos, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 170, 340, -1));
+
+        ContraseñaTF.setBorder(null);
+        ContraseñaTF.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ContraseñaTFActionPerformed(evt);
+            }
+        });
+        jPanel3.add(ContraseñaTF, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 240, 340, -1));
+
+        jLabel1.setText("Contraseña:");
+        jPanel3.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(840, 220, -1, -1));
 
         jPanel2.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
 
@@ -468,11 +483,6 @@ public class Empleados extends javax.swing.JFrame {
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void CargoTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_CargoTFActionPerformed
-        // TODO add your handling code here:
-        
-    }//GEN-LAST:event_CargoTFActionPerformed
 
     private void NombreTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NombreTFActionPerformed
         // TODO add your handling code here:
@@ -493,14 +503,6 @@ public class Empleados extends javax.swing.JFrame {
     private void NumeroDeCuentaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_NumeroDeCuentaActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_NumeroDeCuentaActionPerformed
-
-    private void BancoTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_BancoTFActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_BancoTFActionPerformed
-
-    private void ContraseñaTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ContraseñaTFActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_ContraseñaTFActionPerformed
 
     private void IngresoVentanaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_IngresoVentanaActionPerformed
         // TODO add your handling code here:
@@ -587,11 +589,8 @@ public class Empleados extends javax.swing.JFrame {
     CelularTF.setText(model.getValueAt(fila, 2).toString());
     CorreoTF.setText(model.getValueAt(fila, 3).toString());
     NumeroDeCuenta.setText(model.getValueAt(fila, 4).toString());
-    BancoTF.setText(model.getValueAt(fila, 5).toString());
     ContraseñaTF.setText(model.getValueAt(fila, 6).toString());
-    CargoTF.setText(model.getValueAt(fila, 7).toString());
-
-    DNITF.setEditable(false); // No se debe cambiar el DNI porque es clave primaria
+    DNITF.setEditable(false); 
     }//GEN-LAST:event_SeleccionarActionPerformed
 
     private void AgregarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_AgregarActionPerformed
@@ -602,9 +601,11 @@ public class Empleados extends javax.swing.JFrame {
         String celular = CelularTF.getText().trim();
         String correo = CorreoTF.getText().trim();
         String numeroCuenta = NumeroDeCuenta.getText().trim();
-        String banco = BancoTF.getText().trim();
         String contrasena = ContraseñaTF.getText().trim();
-        String cargo = CargoTF.getText().trim();
+        String contrasenaHash = BCrypt.hashpw(contrasena, BCrypt.gensalt());
+        String cargo = jComboBox1Cargo.getSelectedItem().toString();
+        String banco = jComboBoxBancos.getSelectedItem().toString();
+
 
     // 1️⃣ Validar que no haya campos vacíos
     if (dni.isEmpty() || nombre.isEmpty() || celular.isEmpty() || correo.isEmpty() ||
@@ -639,7 +640,7 @@ public class Empleados extends javax.swing.JFrame {
         return;
     }
 
-    if (!contrasena.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#%'?¡¿])[A-Za-z\\d@$!%*?&]{8,}$")) {
+    if (!contrasena.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$")) {
         javax.swing.JOptionPane.showMessageDialog(this, 
             "La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula, un número y un carácter especial.",
             "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -649,7 +650,7 @@ public class Empleados extends javax.swing.JFrame {
     // 3️⃣ Insertar en base de datos
     String sql = "INSERT INTO empleados (dni, nombres_apellidos, celular, correo, numero_cuenta, banco, contrasena, cargo) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-    try (java.sql.Connection con = Conexion.conectar();
+    try (java.sql.Connection con = Conexion.getInstance();
          java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
 
         ps.setString(1, dni);
@@ -658,7 +659,7 @@ public class Empleados extends javax.swing.JFrame {
         ps.setString(4, correo);
         ps.setString(5, numeroCuenta);
         ps.setString(6, banco);
-        ps.setString(7, contrasena);
+        ps.setString(7, contrasenaHash);
         ps.setString(8, cargo);
 
         ps.executeUpdate();
@@ -674,9 +675,7 @@ public class Empleados extends javax.swing.JFrame {
         CelularTF.setText("");
         CorreoTF.setText("");
         NumeroDeCuenta.setText("");
-        BancoTF.setText("");
         ContraseñaTF.setText("");
-        CargoTF.setText("");
 
     } catch (java.sql.SQLException e) {
         javax.swing.JOptionPane.showMessageDialog(this, "Error al agregar empleado: " + e.getMessage(), "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -696,10 +695,10 @@ public class Empleados extends javax.swing.JFrame {
         String celular = CelularTF.getText().trim();
         String correo = CorreoTF.getText().trim();
         String numeroCuenta = NumeroDeCuenta.getText().trim();
-        String banco = BancoTF.getText().trim();
         String contrasena = ContraseñaTF.getText().trim();
-        String cargo = CargoTF.getText().trim();
-
+        String cargo = jComboBox1Cargo.getSelectedItem().toString();
+        String banco = jComboBoxBancos.getSelectedItem().toString();
+        
         // ✅ Validaciones rápidas
         if (dni.isEmpty() || nombre.isEmpty() || celular.isEmpty() || correo.isEmpty() ||
             numeroCuenta.isEmpty() || banco.isEmpty() || contrasena.isEmpty() || cargo.isEmpty()) {
@@ -743,7 +742,7 @@ public class Empleados extends javax.swing.JFrame {
     // ✅ Consulta SQL de actualización
     String sql = "UPDATE empleados SET nombres_apellidos=?, celular=?, correo=?, numero_cuenta=?, banco=?, contrasena=?, cargo=? WHERE dni=?";
 
-    try (java.sql.Connection con = Conexion.conectar();
+    try (java.sql.Connection con = Conexion.getInstance();
          java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
 
         ps.setString(1, nombre);
@@ -774,9 +773,7 @@ public class Empleados extends javax.swing.JFrame {
         CelularTF.setText("");
         CorreoTF.setText("");
         NumeroDeCuenta.setText("");
-        BancoTF.setText("");
         ContraseñaTF.setText("");
-        CargoTF.setText("");
         DNITF.setEditable(true);
 
     } catch (java.sql.SQLException e) {
@@ -805,7 +802,7 @@ public class Empleados extends javax.swing.JFrame {
     // SQL para eliminar el empleado
     String sql = "DELETE FROM empleados WHERE dni = ?";
 
-    try (java.sql.Connection con = Conexion.conectar();
+    try (java.sql.Connection con = Conexion.getInstance();
          java.sql.PreparedStatement ps = con.prepareStatement(sql)) {
 
         ps.setString(1, dni);
@@ -824,9 +821,7 @@ public class Empleados extends javax.swing.JFrame {
             CelularTF.setText("");
             CorreoTF.setText("");
             NumeroDeCuenta.setText("");
-            BancoTF.setText("");
             ContraseñaTF.setText("");
-            CargoTF.setText("");
 
         } else {
             javax.swing.JOptionPane.showMessageDialog(this, "No se encontró el empleado para eliminar.", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -836,6 +831,10 @@ public class Empleados extends javax.swing.JFrame {
         javax.swing.JOptionPane.showMessageDialog(this, "Error al eliminar empleado: " + e.getMessage(), "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
     }
     }//GEN-LAST:event_EliminarActionPerformed
+
+    private void ContraseñaTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ContraseñaTFActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_ContraseñaTFActionPerformed
 
     /**
      * @param args the command line arguments
@@ -868,10 +867,8 @@ public class Empleados extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JToggleButton Agregar;
-    private javax.swing.JTextField BancoTF;
-    private javax.swing.JTextField CargoTF;
     private javax.swing.JTextField CelularTF;
-    private javax.swing.JTextField ContraseñaTF;
+    private javax.swing.JPasswordField ContraseñaTF;
     private javax.swing.JTextField CorreoTF;
     private javax.swing.JTextField DNITF;
     private javax.swing.JToggleButton Editar;
@@ -890,17 +887,18 @@ public class Empleados extends javax.swing.JFrame {
     private javax.swing.JButton SalidaVentana;
     private javax.swing.JButton SalidaVentana1;
     private javax.swing.JButton Seleccionar;
+    private javax.swing.JComboBox<String> jComboBox1Cargo;
+    private javax.swing.JComboBox<String> jComboBoxBancos;
+    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator4;
     private javax.swing.JSeparator jSeparator5;
     private javax.swing.JSeparator jSeparator6;
-    private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     // End of variables declaration//GEN-END:variables
 }

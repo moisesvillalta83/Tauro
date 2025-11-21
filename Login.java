@@ -18,7 +18,7 @@ public class Login extends javax.swing.JFrame {
      */
     public Login() {
         initComponents();
-        dniTF.setText("Ingrese DNI del Usuario");
+        dniTF.setText("Ingrese DNI de Usuario");
         dniTF.setForeground(Color.GRAY);
 
         contrasenaTF.setText("********");
@@ -168,7 +168,7 @@ public class Login extends javax.swing.JFrame {
 
     String sql = "SELECT * FROM empleados WHERE dni = ? AND contrasena = ?";
 
-    try (Connection con = Conexion.conectar();
+    try (Connection con = Conexion.getInstance();
          PreparedStatement ps = con.prepareStatement(sql)) {
 
         ps.setString(1, dni);
