@@ -101,7 +101,6 @@ public class InfoEspacio extends javax.swing.JFrame {
 
     pack();
 }
-
     private javax.swing.JLabel titulo;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JLabel dniLabel;

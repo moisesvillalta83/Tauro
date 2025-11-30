@@ -4,6 +4,9 @@ import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import javax.swing.JOptionPane;
+import controller.IngresoController;
+import dao.*;
+import java.util.List;
 
 public class Ingreso extends javax.swing.JFrame {
 
@@ -68,7 +71,7 @@ public class Ingreso extends javax.swing.JFrame {
         EmpleadosVentana.setBackground(new java.awt.Color(248, 243, 238));
         EmpleadosVentana.setFont(new java.awt.Font("Roboto ExtraBold", 0, 36)); // NOI18N
         EmpleadosVentana.setForeground(new java.awt.Color(97, 133, 184));
-        EmpleadosVentana.setText("    Empleados");
+        EmpleadosVentana.setText("    Administración");
         EmpleadosVentana.setBorder(null);
         EmpleadosVentana.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         EmpleadosVentana.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
@@ -308,7 +311,33 @@ public class Ingreso extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
 
-        registrarCliente();
+        IngresoController controller = new IngresoController();
+    boolean exito = controller.registrarCliente(
+        NombreTextField.getText().trim(),
+        ApellidoTextField.getText().trim(),
+        DNITextField.getText().trim(),
+        jTextFieldCelular.getText().trim(),
+        jTextFieldPlaca.getText().trim(),
+        jComboBoxMarca.getEditor().getItem().toString().trim(),
+        (String) jComboBoxEspacios.getSelectedItem()
+    );
+
+    if (exito) {
+        // Limpiar campos
+        NombreTextField.setText("");
+        ApellidoTextField.setText("");
+        DNITextField.setText("");
+        jTextFieldCelular.setText("");
+        jTextFieldPlaca.setText("");
+        jComboBoxMarca.setSelectedIndex(-1);
+        jComboBoxMarca.getEditor().setItem("");
+        jComboBoxEspacios.setSelectedIndex(0);
+
+        // Redirigir al historial
+        Historial historial = new Historial(dniUsuario, contrasenaUsuario);
+        historial.setVisible(true);
+        this.dispose();
+    }
     }//GEN-LAST:event_jButton1ActionPerformed
     private void cargarMarcas() {
     jComboBoxMarca.removeAllItems();
@@ -324,176 +353,30 @@ public class Ingreso extends javax.swing.JFrame {
     }
 
     jComboBoxMarca.setEditable(true); // Permite escribir nuevas marcas
-}
+    }
 
     private void cargarEspaciosDisponibles() {
     jComboBoxEspacios.removeAllItems();
-
-    try (Connection con = Conexion.getInstance()) {
-
-        // 1) Obtener los espacios ocupados
-        String sql = "SELECT espacio FROM estacionamiento WHERE estado = 'Ocupado'";
-        PreparedStatement ps = con.prepareStatement(sql);
-        ResultSet rs = ps.executeQuery();
-
-        // Guardar ocupados
-        java.util.Set<String> ocupados = new java.util.HashSet<>();
-        while (rs.next()) {
-            ocupados.add(rs.getString("espacio"));
-        }
-
-        // 2) Espacios totales (1 al 12)
-        boolean hayEspacios = false;
-        for (int i = 1; i <= 12; i++) {
-            String esp = String.valueOf(i);
-
-            if (!ocupados.contains(esp)) {
-                jComboBoxEspacios.addItem(esp);
-                hayEspacios = true;
-            }
-        }
-
-        // Si no hay espacios libres
-        if (!hayEspacios) {
+    EstacionamientoDAO dao = new EstacionamientoDAO();
+    try {
+        List<String> espacios = dao.obtenerEspaciosDisponibles();
+        if (espacios.isEmpty()) {
             jComboBoxEspacios.addItem("No hay espacios libres");
             jComboBoxEspacios.setEnabled(false);
         } else {
+            for (String esp : espacios) {
+                jComboBoxEspacios.addItem(esp);
+            }
             jComboBoxEspacios.setEnabled(true);
         }
-
     } catch (SQLException e) {
         JOptionPane.showMessageDialog(this, "Error al cargar espacios: " + e.getMessage());
     }
 }
 
-
     
-    private void registrarCliente() {
-    String nombre = NombreTextField.getText().trim();
-    String apellido = ApellidoTextField.getText().trim();
-    String dni = DNITextField.getText().trim();
-    String celular = jTextFieldCelular.getText().trim();
-    String placa = jTextFieldPlaca.getText().trim().toUpperCase();
-    String marca = jComboBoxMarca.getEditor().getItem().toString().trim();
-    String espacio = (String) jComboBoxEspacios.getSelectedItem();
-    String estado = "Ocupado";
-    double cobro = 0.00; // Inicialmente 0 hasta que salga
-
-    // Validaciones
-    if (nombre.isEmpty() || apellido.isEmpty() || dni.isEmpty() ||
-        celular.isEmpty() || placa.isEmpty() || marca.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Por favor, completa todos los campos.");
-        return;
-    }
-    if (!nombre.matches("^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$")) {
-        JOptionPane.showMessageDialog(this, "El nombre solo puede contener letras.");
-        return;
-    }
-    if (!apellido.matches("^[A-Za-zÁÉÍÓÚáéíóúñÑ ]+$")) {
-        JOptionPane.showMessageDialog(this, "El apellido solo puede contener letras.");
-        return;
-    }
-    if (!dni.matches("\\d{8}")) {
-        JOptionPane.showMessageDialog(this, "El DNI debe tener 8 dígitos numéricos.");
-        return;
-    }
-    if (!celular.matches("9\\d{8,}")) {
-    JOptionPane.showMessageDialog(this, "El celular debe empezar con un 9 y tener al menos 9 dígitos numéricos.");
-    return;
-    }
-    if (!placa.matches("^(?=(?:.*[A-Z]){3})(?=(?:.*\\d){3})[A-Z0-9]{6}$")) {
-    JOptionPane.showMessageDialog(this, "La placa debe contener 3 letras y 3 números.");
-    return;
-    }
-
-    LocalDateTime ahora = LocalDateTime.now();
-    String fechaHoraIngreso = ahora.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-
-    try (Connection con = Conexion.getInstance()) {
-
-        // 1️⃣ Insertar cliente si no existe
-        String checkCliente = "SELECT COUNT(*) FROM clientes WHERE dni = ?";
-        PreparedStatement psCheckCliente = con.prepareStatement(checkCliente);
-        psCheckCliente.setString(1, dni);
-        ResultSet rsCliente = psCheckCliente.executeQuery();
-        if (rsCliente.next() && rsCliente.getInt(1) == 0) {
-            String insertCliente = "INSERT INTO clientes (dni, nombre, apellido, celular) VALUES (?, ?, ?, ?)";
-            PreparedStatement psCliente = con.prepareStatement(insertCliente);
-            psCliente.setString(1, dni);
-            psCliente.setString(2, nombre);
-            psCliente.setString(3, apellido);
-            psCliente.setString(4, celular);
-            psCliente.executeUpdate();
-        }
-
-        // 2️⃣ Insertar vehículo si no existe
-        String checkVehiculo = "SELECT COUNT(*) FROM vehiculo WHERE placa = ?";
-        PreparedStatement psCheckVehiculo = con.prepareStatement(checkVehiculo);
-        psCheckVehiculo.setString(1, placa);
-        ResultSet rsVehiculo = psCheckVehiculo.executeQuery();
-        if (rsVehiculo.next() && rsVehiculo.getInt(1) == 0) {
-            String insertVehiculo = "INSERT INTO vehiculo (placa, dni, marca) VALUES (?, ?, ?)";
-            PreparedStatement psVehiculo = con.prepareStatement(insertVehiculo);
-            psVehiculo.setString(1, placa);
-            psVehiculo.setString(2, dni);
-            psVehiculo.setString(3, marca);
-            psVehiculo.executeUpdate();
-        }
-
-        // 3️⃣ Verificar si el espacio está ocupado
-        String checkEspacio = "SELECT COUNT(*) FROM estacionamiento WHERE espacio = ? AND estado = 'Ocupado'";
-        PreparedStatement psEspacio = con.prepareStatement(checkEspacio);
-        psEspacio.setString(1, espacio);
-        ResultSet rsEspacio = psEspacio.executeQuery();
-        if (rsEspacio.next() && rsEspacio.getInt(1) > 0) {
-            JOptionPane.showMessageDialog(this, "El espacio seleccionado ya está ocupado.");
-            return;
-        }
-
-        // 4️⃣ Insertar en estacionamiento
-        String insertEst = """
-            INSERT INTO estacionamiento (
-                dni, nombre, apellido, celular, placa, marca, 
-                espacio, fecha_ingreso, fecha_salida, estado, cobro
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
-        """;
-
-        PreparedStatement psEst = con.prepareStatement(insertEst);
-        psEst.setString(1, dni);
-        psEst.setString(2, nombre);
-        psEst.setString(3, apellido);
-        psEst.setString(4, celular);
-        psEst.setString(5, placa);
-        psEst.setString(6, marca);
-        psEst.setString(7, espacio);
-        psEst.setString(8, fechaHoraIngreso);
-        psEst.setString(9, estado);
-        psEst.setDouble(10, cobro);
-        psEst.executeUpdate();
-        cargarEspaciosDisponibles();
-
-
-        JOptionPane.showMessageDialog(this, "Ingreso registrado correctamente.");
-
-        // Limpiar campos
-        NombreTextField.setText("");
-        ApellidoTextField.setText("");
-        DNITextField.setText("");
-        jTextFieldCelular.setText("");
-        jTextFieldPlaca.setText("");
-        jComboBoxMarca.setSelectedIndex(-1);
-        jComboBoxMarca.getEditor().setItem("");
-        jComboBoxEspacios.setSelectedIndex(0);
-
-        // Redirigir al historial
-        Historial historial = new Historial(dniUsuario, contrasenaUsuario);
-        historial.setVisible(true);
-        this.dispose();
-
-    } catch (SQLException e) {
-        JOptionPane.showMessageDialog(this, "Error al registrar ingreso: " + e.getMessage());
-    }
-    }
+ 
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextField ApellidoTextField;

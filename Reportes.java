@@ -1,51 +1,444 @@
 package Menu;
 
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Chunk;
 import java.sql.*;
-import java.text.DecimalFormat;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import javax.swing.JOptionPane;
-import javax.swing.table.DefaultTableModel;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.pdf.draw.LineSeparator;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
-public class Salida extends javax.swing.JFrame {
+
+public class Reportes extends javax.swing.JFrame {
     
     private String dniUsuario;
     private String contrasenaUsuario;
     private boolean esRefresco = false;
 
     
-    public Salida(String dniUsuario, String contrasenaUsuario) {
+    public Reportes(String dniUsuario, String contrasenaUsuario) {
         initComponents();
+        cargarCombos();
+        configurarEventos();
         this.setLocationRelativeTo(null);
         this.dniUsuario = dniUsuario;
         this.contrasenaUsuario = contrasenaUsuario;
         if (!(dniUsuario.equals("75284260") && contrasenaUsuario.equals("Overw@tch73"))) {
-            EmpleadosVentana.setVisible(false);
+        EmpleadosVentana.setVisible(false);
         }
-        jToggleButtonBuscadorPorPlaca.addActionListener(e -> buscarPorPlaca());
-        // 🔹 Placeholders: limpiar texto al hacer clic
-        jTextFieldBuscadorPorPlaca.addMouseListener(new java.awt.event.MouseAdapter() {
-        @Override
-        public void mousePressed(java.awt.event.MouseEvent evt) {
-            if (jTextFieldBuscadorPorPlaca.getText().equals("Placa")) {
-                jTextFieldBuscadorPorPlaca.setText("");
-                jTextFieldBuscadorPorPlaca.setForeground(new java.awt.Color(0, 0, 0)); // texto negro
-            }
-        }
-    });
+    }
 
-        Efectivo1.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mousePressed(java.awt.event.MouseEvent evt) {
-                if (Efectivo1.getText().equals("Efectivo")) {
-                    Efectivo1.setText("");
-                    Efectivo1.setForeground(new java.awt.Color(0, 0, 0)); // texto negro
-                }
-            }
+    private void cargarCombos() {
+        // Periodos disponibles
+        PeriododeTiempo.removeAllItems();
+        PeriododeTiempo.addItem("Día");
+        PeriododeTiempo.addItem("Semana");
+        PeriododeTiempo.addItem("Mes");
+        PeriododeTiempo.addItem("Año");
+        // Dias (1–31)
+        DiaInicial.removeAllItems();
+        DiaFinal.removeAllItems();
+        for (int i = 1; i <= 31; i++) {
+        DiaInicial.addItem(String.valueOf(i));
+        DiaFinal.addItem(String.valueOf(i));
+        }
+        // Meses (1–12)
+        MesInicial.removeAllItems();
+        MesFinal.removeAllItems();
+        for (int i = 1; i <= 12; i++) {
+        MesInicial.addItem(String.valueOf(i));
+        MesFinal.addItem(String.valueOf(i));
+        }
+        // Años (2020–2035)
+        AñoInicial.removeAllItems();
+        AñoFinal.removeAllItems();
+        for (int i = 2020; i <= 2035; i++) {
+        AñoInicial.addItem(String.valueOf(i));
+        AñoFinal.addItem(String.valueOf(i));
+        }
+    }
+
+    private void configurarEventos() {
+        PeriododeTiempo.addActionListener(e -> actualizarVisibilidadSegunPeriodo());
+        // Cuando cambia mes inicial → ajustar mes final automático
+        MesInicial.addActionListener(e -> {
+        if (PeriododeTiempo.getSelectedItem().equals("Mes")) {
+        MesFinal.setSelectedItem(MesInicial.getSelectedItem());
+        }
+        });
+        AñoInicial.addActionListener(e -> {
+        if (PeriododeTiempo.getSelectedItem().equals("Mes") || PeriododeTiempo.getSelectedItem().equals("Año")) {
+        AñoFinal.setSelectedItem(AñoInicial.getSelectedItem());
+        }
         });
     }
 
+    private void actualizarVisibilidadSegunPeriodo() {
+        String periodo = PeriododeTiempo.getSelectedItem().toString();
+        switch (periodo) {
+        case "Día":
+        habilitarDia();
+        break;
+        case "Semana":
+        habilitarSemana();
+        break;
+        case "Mes":
+        habilitarMes();
+        break;
+        case "Año":
+        habilitarAño();
+        break;
+        }
+    }
+
+    private void habilitarDia() {
+    // Inicial habilitado
+    DiaInicial.setEnabled(true);
+    MesInicial.setEnabled(true);
+    AñoInicial.setEnabled(true);
+
+    // Final deshabilitado
+    DiaFinal.setEnabled(false);
+    MesFinal.setEnabled(false);
+    AñoFinal.setEnabled(false);
+    }
+
+    private void habilitarSemana() {
+
+    DiaInicial.setEnabled(true);
+    MesInicial.setEnabled(true);
+    AñoInicial.setEnabled(true);
+
+    DiaFinal.setEnabled(false);
+    MesFinal.setEnabled(false);
+    AñoFinal.setEnabled(false);
+    }
+
+    private void habilitarMes() {
+
+    // Solo mes y año
+    DiaInicial.setEnabled(false);
+    DiaFinal.setEnabled(false);
+
+    MesInicial.setEnabled(true);
+    AñoInicial.setEnabled(true);
+
+    MesFinal.setEnabled(true);
+    AñoFinal.setEnabled(true);
+    }
+
+    private void habilitarAño() {
+
+    // Solo años
+    AñoInicial.setEnabled(true);
+    AñoFinal.setEnabled(true);
+
+    // Deshabilitar días y meses
+    DiaInicial.setEnabled(false);
+    MesInicial.setEnabled(false);
+
+    DiaFinal.setEnabled(false);
+    MesFinal.setEnabled(false);
+    }
+    
+    private ReportData obtenerDatosReporte(String fechaInicio, String fechaFin) {
+        
+        ReportData data = new ReportData();
+        
+            String sql = """
+            SELECT e.id_estacionamiento, e.dni, e.nombre, e.apellido, e.celular, e.placa, e.marca, e.espacio, e.fecha_ingreso, e.fecha_salida, e.estado, e.cobro, c.efectivo, c.vuelto, c.empleado
+            FROM estacionamiento e
+            LEFT JOIN cobros c ON e.id_estacionamiento = c.id_estacionamiento
+            WHERE DATE(e.fecha_ingreso) >= ? AND DATE(e.fecha_ingreso) <= ?
+            """;
+            
+            try (Connection con = Conexion.getInstance(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, fechaInicio);
+            ps.setString(2, fechaFin);
+            ResultSet rs = ps.executeQuery();
+            
+            while (rs.next()) {
+            Registro r = new Registro();
+                r.id = rs.getInt("id_estacionamiento");
+                r.dni = rs.getString("dni");
+                r.nombre = rs.getString("nombre");
+                r.apellido = rs.getString("apellido");
+                r.celular = rs.getString("celular");
+                r.placa = rs.getString("placa");
+                r.marca = rs.getString("marca");
+                r.espacio = rs.getString("espacio");
+                r.fechaIngreso = rs.getTimestamp("fecha_ingreso");
+                r.fechaSalida = rs.getTimestamp("fecha_salida");
+                r.estado = rs.getString("estado");
+                r.cobro = rs.getDouble("cobro");
+                // Nuevos campos desde la tabla cobros (pueden ser 0 si null)
+                
+            try {
+            r.efectivo = rs.getDouble("efectivo");
+            } catch (Exception ex) {
+            r.efectivo = 0;
+            }
+            try {
+            r.vuelto = rs.getDouble("vuelto");
+            } catch (Exception ex) {
+            r.vuelto = 0;
+            }
+            r.empleado = rs.getString("empleado");
+            if (r.estado != null && r.estado.equalsIgnoreCase("CANCELADO")) {
+            data.eliminados.add(r);
+            } else {
+            data.registros.add(r);
+            }
+            }
+            } catch (Exception ex) {
+            ex.printStackTrace();
+            }
+            return data;
+    }
+
+    private void calcularEstadisticas(ReportData data) {
+        int totalEspacios = 12;
+        int ocupados = 0;
+        double ingresosTotales = 0;
+        int vehiculosAtendidos = 0;
+        long tiempoTotalEstanciaMinutos = 0;
+        double mayor = Double.MIN_VALUE;
+        double menor = Double.MAX_VALUE;
+        for (Registro r : data.registros) {
+        if (r.estado != null && r.estado.equalsIgnoreCase("ACTIVO")) {
+        ocupados++;
+        }
+        // Consideramos vehículos finalizados (tienen salida) para ingresos/tiempo
+        if (r.fechaSalida != null && r.cobro > 0) {
+        ingresosTotales += r.cobro;
+        vehiculosAtendidos++;
+        long diffMs = r.fechaSalida.getTime() - r.fechaIngreso.getTime();
+        long diffMin = diffMs / 60000L; // minutos
+        if (diffMin < 0) diffMin = 0;
+        tiempoTotalEstanciaMinutos += diffMin;
+        if (r.cobro > mayor) mayor = r.cobro;
+        if (r.cobro < menor) menor = r.cobro;
+        }
+        }
+        data.tasaOcupacion = (ocupados * 100.0) / totalEspacios;
+        data.ingresoTotal = ingresosTotales;
+        data.tiempoPromedioEstancia = vehiculosAtendidos == 0 ? 0 : tiempoTotalEstanciaMinutos / vehiculosAtendidos;
+        data.ingresoPromedioVehiculo = vehiculosAtendidos == 0 ? 0 : ingresosTotales / vehiculosAtendidos;
+        data.mayorIngreso = vehiculosAtendidos == 0 ? 0 : mayor;
+        data.menorIngreso = vehiculosAtendidos == 0 ? 0 : menor;
+    }
+
+    private void generarPDF(ReportData data, String fechaInicio, String fechaFin, String tipo) {
+        try {
+            
+        
+        // ========= 1. DOCUMENTO =========
+            Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
+            String userHome = System.getProperty("user.home");
+            String desktopPath = userHome + File.separator + "Desktop";
+            String fileName = "Reporte_Estacionamiento_" + tipo + "_" + System.currentTimeMillis() + ".pdf";
+            PdfWriter.getInstance(doc, new FileOutputStream(desktopPath + File.separator + fileName));
+            doc.open();
+        // ========= 2. FUENTES =========
+            Font tituloGrande = new Font(Font.FontFamily.HELVETICA, 26, Font.BOLD);
+            Font encabezadoNegrita = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
+            Font encabezadoNormal = new Font(Font.FontFamily.HELVETICA, 12);
+            Font tituloFont = new Font(Font.FontFamily.HELVETICA, 20, Font.BOLD);
+            Font subTituloFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+            Font headerFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD, BaseColor.WHITE);
+            Font textoFont = new Font(Font.FontFamily.HELVETICA, 11);
+            Font estadFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
+        // ===== ENCABEZADO PERSONALIZADO =====
+            Paragraph tituloPrincipal = new Paragraph("TAURO", tituloGrande);
+            tituloPrincipal.setAlignment(Element.ALIGN_CENTER);
+            tituloPrincipal.setSpacingAfter(8);
+            doc.add(tituloPrincipal);
+            Paragraph infoEmpresa = new Paragraph();
+            infoEmpresa.setAlignment(Element.ALIGN_LEFT);
+            infoEmpresa.add(new Phrase("Empresa: ", encabezadoNegrita));
+            infoEmpresa.add(new Phrase("TAURO S.A.C.\n", encabezadoNormal));
+            infoEmpresa.add(new Phrase("RUC: ", encabezadoNegrita));
+            infoEmpresa.add(new Phrase("78547896213\n", encabezadoNormal));
+            infoEmpresa.add(new Phrase("Dirección: ", encabezadoNegrita));
+            infoEmpresa.add(new Phrase("Av. Arenales 1923, Lince\n", encabezadoNormal));
+            infoEmpresa.add(new Phrase("Correo electrónico: ", encabezadoNegrita));
+            infoEmpresa.add(new Phrase("tauro.estacionamiento@gmail.com\n", encabezadoNormal));
+            infoEmpresa.add(new Phrase("Celular: ", encabezadoNegrita));
+            infoEmpresa.add(new Phrase("912987354\n", encabezadoNormal));
+            infoEmpresa.setSpacingAfter(20);
+            doc.add(infoEmpresa);
+            Paragraph titulo = new Paragraph("REPORTE DEL ESTACIONAMIENTO", tituloFont);
+            titulo.setAlignment(Element.ALIGN_CENTER);
+            titulo.setSpacingAfter(20);
+            doc.add(titulo);
+            Paragraph periodo = new Paragraph("Periodo: " + fechaInicio + " → " + fechaFin, subTituloFont);
+            periodo.setAlignment(Element.ALIGN_CENTER);
+            periodo.setSpacingAfter(25);
+            doc.add(periodo);
+            LineSeparator separator = new LineSeparator();
+            separator.setOffset(-2);
+            doc.add(new Chunk(separator));
+            doc.add(new Paragraph(" "));
+            // Dependiendo del tipo, generamos tablas distintas
+            if ("ELIMINADOS".equalsIgnoreCase(tipo)) {
+            // Tabla eliminados
+            PdfPTable tablaEliminados = new PdfPTable(5);
+            tablaEliminados.setWidthPercentage(100);
+            tablaEliminados.setWidths(new float[]{2, 3, 2, 3, 3});
+            String[] headEli = {"DNI", "Nombre", "Placa", "Ingreso", "Salida"};
+            BaseColor headColor = new BaseColor(150, 50, 50);
+            for (String h : headEli) {
+            PdfPCell c = new PdfPCell(new Phrase(h, headerFont));
+            c.setBackgroundColor(headColor);
+            c.setPadding(6);
+            c.setHorizontalAlignment(Element.ALIGN_CENTER);
+            tablaEliminados.addCell(c);
+            }
+            DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+            for (Registro r : data.eliminados) {
+            tablaEliminados.addCell(celda(r.dni, textoFont));
+            tablaEliminados.addCell(celda(r.nombre + " " + r.apellido, textoFont));
+            tablaEliminados.addCell(celda(r.placa, textoFont));
+            LocalDateTime ingreso = r.fechaIngreso != null ? r.fechaIngreso.toLocalDateTime() : null;
+            LocalDateTime salida = r.fechaSalida != null ? r.fechaSalida.toLocalDateTime() : null;
+            String fechaIngStr = ingreso != null ? ingreso.format(formato) : "—";
+            String fechaSalStr = salida != null ? salida.format(formato) : "—";
+            tablaEliminados.addCell(celda(fechaIngStr, textoFont));
+            tablaEliminados.addCell(celda(fechaSalStr, textoFont));
+            }
+            doc.add(tablaEliminados);
+            } else {
+            // Tabla principal para ingresos/valores/full
+                PdfPTable tabla = new PdfPTable(7);
+                tabla.setWidthPercentage(100);
+                tabla.setWidths(new float[]{2, 3, 2, 3, 3, 2, 2});
+                String[] columnas = {"DNI", "Nombre", "Placa", "Ingreso", "Salida", "Efectivo", "Cobro"};
+                BaseColor headerColor = new BaseColor(60, 90, 150);
+                for (String col : columnas) {
+                PdfPCell h = new PdfPCell(new Phrase(col, headerFont));
+                h.setBackgroundColor(headerColor);
+                h.setHorizontalAlignment(Element.ALIGN_CENTER);
+                h.setPadding(8);
+                tabla.addCell(h);
+                }
+                for (Registro r : data.registros) {
+                tabla.addCell(celda(r.dni, textoFont));
+                tabla.addCell(celda(r.nombre + " " + r.apellido, textoFont));
+                tabla.addCell(celda(r.placa, textoFont));
+                tabla.addCell(celda(new SimpleDateFormat("dd/MM/yyyy HH:mm").format(r.fechaIngreso), textoFont));
+                tabla.addCell(celda(r.fechaSalida == null ? "—" : new SimpleDateFormat("dd/MM/yyyy HH:mm").format(r.fechaSalida), textoFont));
+                tabla.addCell(celda(String.format("S/ %.2f", r.efectivo), textoFont));
+                tabla.addCell(celda(String.format("S/ %.2f", r.cobro), textoFont));
+                }
+                doc.add(tabla);
+
+
+                // Estadísticas (solo para tipos que las requieran)
+                if ("FULL".equalsIgnoreCase(tipo)) {
+                Paragraph estadTitulo = new Paragraph("Estadísticas del Periodo", subTituloFont);
+                estadTitulo.setSpacingBefore(10);
+                estadTitulo.setSpacingAfter(10);
+                doc.add(estadTitulo);
+                PdfPTable estadisticas = new PdfPTable(2);
+                estadisticas.setWidthPercentage(100);
+                estadisticas.setSpacingBefore(5);
+                estadisticas.setWidths(new float[]{4, 2});
+                estadisticas.addCell(celdaEstad("Ingreso Total:", String.format("S/ %.2f", data.ingresoTotal), estadFont));
+                estadisticas.addCell(celdaEstad("Vehículos Atendidos:", String.valueOf(data.registros.size()), estadFont));
+                estadisticas.addCell(celdaEstad("Ingreso Promedio por Vehículo:", String.format("S/ %.2f", data.ingresoPromedioVehiculo), estadFont));
+                estadisticas.addCell(celdaEstad("Mayor ingreso (por vehículo):", String.format("S/ %.2f", data.mayorIngreso), estadFont));
+                estadisticas.addCell(celdaEstad("Menor ingreso (por vehículo):", String.format("S/ %.2f", data.menorIngreso), estadFont));
+                estadisticas.addCell(celdaEstad("Tiempo Promedio de Estancia:", data.tiempoPromedioEstancia + " min", estadFont));
+                estadisticas.addCell(celdaEstad("Tasa de Ocupación:", String.format("%.2f %%", data.tasaOcupacion), estadFont));
+                estadisticas.addCell(celdaEstad("Tasa de Ocupación:", String.format("%.2f %%", data.tasaOcupacion), estadFont));
+                doc.add(estadisticas);
+                }
+                if ("INDICADORES".equalsIgnoreCase(tipo)) {
+                Paragraph estadTitulo = new Paragraph("Estadísticas del Periodo", subTituloFont);
+                estadTitulo.setSpacingBefore(10);
+                estadTitulo.setSpacingAfter(10);
+                doc.add(estadTitulo);
+                PdfPTable estadisticas = new PdfPTable(2);
+                estadisticas.setWidthPercentage(100);
+                estadisticas.setSpacingBefore(5);
+                estadisticas.setWidths(new float[]{4, 2});
+                estadisticas.addCell(celdaEstad("Ingreso Total:", String.format("S/ %.2f", data.ingresoTotal), estadFont));
+                estadisticas.addCell(celdaEstad("Vehículos Atendidos:", String.valueOf(data.registros.size()), estadFont));
+                estadisticas.addCell(celdaEstad("Ingreso Promedio por Vehículo:", String.format("S/ %.2f", data.ingresoPromedioVehiculo), estadFont));
+                estadisticas.addCell(celdaEstad("Tiempo Promedio de Estancia:", data.tiempoPromedioEstancia + " min", estadFont));
+                estadisticas.addCell(celdaEstad("Tasa de Ocupación:", String.format("%.2f %%", data.tasaOcupacion), estadFont));
+                estadisticas.addCell(celdaEstad("Tasa de Ocupación:", String.format("%.2f %%", data.tasaOcupacion), estadFont));
+                doc.add(estadisticas);
+                }
+                if ("VALORES".equalsIgnoreCase(tipo)) {
+                Paragraph estadTitulo = new Paragraph("Estadísticas del Periodo", subTituloFont);
+                estadTitulo.setSpacingBefore(10);
+                estadTitulo.setSpacingAfter(10);
+                doc.add(estadTitulo);
+                PdfPTable estadisticas = new PdfPTable(2);
+                estadisticas.setWidthPercentage(100);
+                estadisticas.setSpacingBefore(5);
+                estadisticas.setWidths(new float[]{4, 2});
+                estadisticas.addCell(celdaEstad("Ingreso Total:", String.format("S/ %.2f", data.ingresoTotal), estadFont));
+                estadisticas.addCell(celdaEstad("Ingreso Promedio por Vehículo:", String.format("S/ %.2f", data.ingresoPromedioVehiculo), estadFont));
+                estadisticas.addCell(celdaEstad("Mayor ingreso (por vehículo):", String.format("S/ %.2f", data.mayorIngreso), estadFont));
+                estadisticas.addCell(celdaEstad("Menor ingreso (por vehículo):", String.format("S/ %.2f", data.menorIngreso), estadFont));                
+                doc.add(estadisticas);
+                }
+                if ("INGRESOS".equalsIgnoreCase(tipo)) {
+                Paragraph estadTitulo = new Paragraph("Estadísticas del Periodo", subTituloFont);
+                estadTitulo.setSpacingBefore(10);
+                estadTitulo.setSpacingAfter(10);
+                doc.add(estadTitulo);
+                PdfPTable estadisticas = new PdfPTable(2);
+                estadisticas.setWidthPercentage(100);
+                estadisticas.setSpacingBefore(5);
+                estadisticas.setWidths(new float[]{4, 2});
+                estadisticas.addCell(celdaEstad("Ingreso Total:", String.format("S/ %.2f", data.ingresoTotal), estadFont));
+                estadisticas.addCell(celdaEstad("Vehículos Atendidos:", String.valueOf(data.registros.size()), estadFont));
+                doc.add(estadisticas);
+                }
+                
+            }
+            doc.close();
+                JOptionPane.showMessageDialog(null, "Reporte generado correctamente en el escritorio:\n" + fileName);
+                } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(null, "Error al generar PDF: " + ex.getMessage());
+            }
+        }
+
+    
+    private PdfPCell celda(String texto, Font font) {
+    PdfPCell c = new PdfPCell(new Phrase(texto, font));
+    c.setHorizontalAlignment(Element.ALIGN_CENTER);
+    c.setPadding(5);
+    return c;
+    }
+    private PdfPCell celdaEstad(String titulo, String valor, Font font) {
+    Paragraph p = new Paragraph(titulo + " " + valor, font);
+    PdfPCell c = new PdfPCell(p);
+    c.setPadding(8);
+    c.setHorizontalAlignment(Element.ALIGN_LEFT);
+    c.setBackgroundColor(new BaseColor(245, 245, 245));
+    return c;
+    }
+    
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -57,19 +450,23 @@ public class Salida extends javax.swing.JFrame {
         SalidaVentana = new javax.swing.JButton();
         HistorialVentana = new javax.swing.JButton();
         EspaciosVentana = new javax.swing.JButton();
-        jTextFieldBuscadorPorPlaca = new javax.swing.JTextField();
-        jToggleButtonBuscadorPorPlaca = new javax.swing.JToggleButton();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        jTableInformacion = new javax.swing.JTable();
-        jButtonCobrar = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
+        PeriododeTiempo = new javax.swing.JComboBox<>();
+        FechaFinal = new javax.swing.JLabel();
+        FechaInicial = new javax.swing.JLabel();
+        AñoInicial = new javax.swing.JComboBox<>();
+        DiaInicial = new javax.swing.JComboBox<>();
+        MesInicial = new javax.swing.JComboBox<>();
+        DiaFinal = new javax.swing.JComboBox<>();
+        MesFinal = new javax.swing.JComboBox<>();
+        AñoFinal = new javax.swing.JComboBox<>();
+        GenerarReporteFechas = new javax.swing.JButton();
         jLabel2 = new javax.swing.JLabel();
-        Efectivo1 = new javax.swing.JTextField();
-        jLabel3 = new javax.swing.JLabel();
-        Vuelto = new javax.swing.JLabel();
-        Calcular = new javax.swing.JButton();
         jSeparator1 = new javax.swing.JSeparator();
-        jSeparator2 = new javax.swing.JSeparator();
+        GenerarReporteIngresos = new javax.swing.JButton();
+        GenerarReporteIndicadores = new javax.swing.JButton();
+        GenerarReporteEliminados = new javax.swing.JButton();
+        GenerarReporteValores1 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -152,11 +549,11 @@ public class Salida extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                     .addComponent(IngresoVentana, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(HistorialVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE)
-                    .addComponent(SalidaVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE)
-                    .addComponent(EmpleadosVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE)
-                    .addComponent(EspaciosVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 376, Short.MAX_VALUE))
-                .addContainerGap(38, Short.MAX_VALUE))
+                    .addComponent(HistorialVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 382, Short.MAX_VALUE)
+                    .addComponent(SalidaVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 382, Short.MAX_VALUE)
+                    .addComponent(EmpleadosVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 382, Short.MAX_VALUE)
+                    .addComponent(EspaciosVentana, javax.swing.GroupLayout.DEFAULT_SIZE, 382, Short.MAX_VALUE))
+                .addContainerGap(32, Short.MAX_VALUE))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -176,90 +573,92 @@ public class Salida extends javax.swing.JFrame {
 
         jPanel2.add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 420, 650));
 
-        jTextFieldBuscadorPorPlaca.setForeground(new java.awt.Color(204, 204, 204));
-        jTextFieldBuscadorPorPlaca.setText("Placa");
-        jTextFieldBuscadorPorPlaca.setBorder(null);
-        jTextFieldBuscadorPorPlaca.addActionListener(new java.awt.event.ActionListener() {
+        jLabel1.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 1, 24)); // NOI18N
+        jLabel1.setText("Generar Reportes:");
+        jPanel2.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 180, -1, -1));
+
+        PeriododeTiempo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(PeriododeTiempo, new org.netbeans.lib.awtextra.AbsoluteConstraints(870, 40, 280, 30));
+
+        FechaFinal.setText("Fecha Final:");
+        jPanel2.add(FechaFinal, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 100, -1, -1));
+
+        FechaInicial.setText("Fecha Incial:");
+        jPanel2.add(FechaInicial, new org.netbeans.lib.awtextra.AbsoluteConstraints(570, 100, -1, -1));
+
+        AñoInicial.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(AñoInicial, new org.netbeans.lib.awtextra.AbsoluteConstraints(730, 130, -1, -1));
+
+        DiaInicial.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(DiaInicial, new org.netbeans.lib.awtextra.AbsoluteConstraints(570, 130, -1, -1));
+
+        MesInicial.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(MesInicial, new org.netbeans.lib.awtextra.AbsoluteConstraints(650, 130, -1, -1));
+
+        DiaFinal.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(DiaFinal, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 130, -1, -1));
+
+        MesFinal.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(MesFinal, new org.netbeans.lib.awtextra.AbsoluteConstraints(900, 130, -1, -1));
+
+        AñoFinal.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        jPanel2.add(AñoFinal, new org.netbeans.lib.awtextra.AbsoluteConstraints(980, 130, -1, -1));
+
+        GenerarReporteFechas.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 1, 24)); // NOI18N
+        GenerarReporteFechas.setText("Por fechas");
+        GenerarReporteFechas.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextFieldBuscadorPorPlacaActionPerformed(evt);
+                GenerarReporteFechasActionPerformed(evt);
             }
         });
-        jPanel2.add(jTextFieldBuscadorPorPlaca, new org.netbeans.lib.awtextra.AbsoluteConstraints(470, 100, 320, 30));
+        jPanel2.add(GenerarReporteFechas, new org.netbeans.lib.awtextra.AbsoluteConstraints(550, 250, 260, 60));
 
-        jToggleButtonBuscadorPorPlaca.setBackground(new java.awt.Color(0, 153, 255));
-        jToggleButtonBuscadorPorPlaca.setFont(new java.awt.Font("Roboto Condensed ExtraBold", 0, 14)); // NOI18N
-        jToggleButtonBuscadorPorPlaca.setForeground(new java.awt.Color(255, 255, 255));
-        jToggleButtonBuscadorPorPlaca.setText("Buscar");
-        jPanel2.add(jToggleButtonBuscadorPorPlaca, new org.netbeans.lib.awtextra.AbsoluteConstraints(800, 100, -1, 30));
+        jLabel2.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 1, 24)); // NOI18N
+        jLabel2.setText("Seleccione un periodo de tiempo:");
+        jPanel2.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 40, -1, -1));
 
-        jTableInformacion.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-
-            },
-            new String [] {
-                "DNI", "Nombre", "Apellido", "Placa", "Ingreso"
-            }
-        ) {
-            Class[] types = new Class [] {
-                java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
-            };
-
-            public Class getColumnClass(int columnIndex) {
-                return types [columnIndex];
-            }
-        });
-        jScrollPane1.setViewportView(jTableInformacion);
-
-        jPanel2.add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(440, 190, 730, 50));
-
-        jButtonCobrar.setBackground(new java.awt.Color(0, 153, 255));
-        jButtonCobrar.setFont(new java.awt.Font("Roboto ExtraBold", 1, 36)); // NOI18N
-        jButtonCobrar.setForeground(new java.awt.Color(255, 255, 255));
-        jButtonCobrar.setText("Cobrar");
-        jButtonCobrar.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButtonCobrarActionPerformed(evt);
-            }
-        });
-        jPanel2.add(jButtonCobrar, new org.netbeans.lib.awtextra.AbsoluteConstraints(690, 270, 230, 60));
-
-        jLabel1.setFont(new java.awt.Font("Roboto ExtraBold", 0, 36)); // NOI18N
-        jLabel1.setText("Total A Pagar:");
-        jPanel2.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 390, -1, -1));
-
-        jLabel2.setFont(new java.awt.Font("Roboto ExtraBold", 1, 48)); // NOI18N
-        jLabel2.setText("S/.00,00");
-        jPanel2.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(530, 450, -1, -1));
-
-        Efectivo1.setForeground(new java.awt.Color(204, 204, 204));
-        Efectivo1.setText("Efectivo");
-        Efectivo1.setBorder(null);
-        jPanel2.add(Efectivo1, new org.netbeans.lib.awtextra.AbsoluteConstraints(800, 400, 240, 30));
-
-        jLabel3.setFont(new java.awt.Font("Roboto Condensed ExtraBold", 1, 36)); // NOI18N
-        jLabel3.setText("Vuelto:");
-        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(830, 470, 120, 30));
-
-        Vuelto.setFont(new java.awt.Font("Roboto ExtraBold", 1, 36)); // NOI18N
-        Vuelto.setText("S/.00,00");
-        jPanel2.add(Vuelto, new org.netbeans.lib.awtextra.AbsoluteConstraints(960, 460, 150, 50));
-
-        Calcular.setBackground(new java.awt.Color(0, 153, 255));
-        Calcular.setFont(new java.awt.Font("Roboto Condensed ExtraBold", 1, 14)); // NOI18N
-        Calcular.setForeground(new java.awt.Color(255, 255, 255));
-        Calcular.setText("Calcular");
-        Calcular.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                CalcularActionPerformed(evt);
-            }
-        });
-        jPanel2.add(Calcular, new org.netbeans.lib.awtextra.AbsoluteConstraints(1060, 400, 90, 30));
-
+        jSeparator1.setBackground(new java.awt.Color(0, 0, 0));
         jSeparator1.setForeground(new java.awt.Color(0, 0, 0));
-        jPanel2.add(jSeparator1, new org.netbeans.lib.awtextra.AbsoluteConstraints(790, 430, 260, 10));
+        jSeparator1.setAlignmentY(5.5F);
+        jSeparator1.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        jSeparator1.setFont(new java.awt.Font("Segoe UI", 0, 36)); // NOI18N
+        jPanel2.add(jSeparator1, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 220, 680, 10));
 
-        jSeparator2.setForeground(new java.awt.Color(0, 0, 0));
-        jPanel2.add(jSeparator2, new org.netbeans.lib.awtextra.AbsoluteConstraints(460, 130, 330, 10));
+        GenerarReporteIngresos.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 0, 24)); // NOI18N
+        GenerarReporteIngresos.setText("Ingresos");
+        GenerarReporteIngresos.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                GenerarReporteIngresosActionPerformed(evt);
+            }
+        });
+        jPanel2.add(GenerarReporteIngresos, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 390, 260, 60));
+
+        GenerarReporteIndicadores.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 0, 24)); // NOI18N
+        GenerarReporteIndicadores.setText("Indicadores");
+        GenerarReporteIndicadores.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                GenerarReporteIndicadoresActionPerformed(evt);
+            }
+        });
+        jPanel2.add(GenerarReporteIndicadores, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 250, 260, 60));
+
+        GenerarReporteEliminados.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 0, 24)); // NOI18N
+        GenerarReporteEliminados.setText("Eliminados");
+        GenerarReporteEliminados.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                GenerarReporteEliminadosActionPerformed(evt);
+            }
+        });
+        jPanel2.add(GenerarReporteEliminados, new org.netbeans.lib.awtextra.AbsoluteConstraints(550, 320, 260, 60));
+
+        GenerarReporteValores1.setFont(new java.awt.Font("Roboto SemiCondensed ExtraBold", 0, 24)); // NOI18N
+        GenerarReporteValores1.setText("Valores");
+        GenerarReporteValores1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                GenerarReporteValores1ActionPerformed(evt);
+            }
+        });
+        jPanel2.add(GenerarReporteValores1, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 320, 260, 60));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -307,200 +706,180 @@ public class Salida extends javax.swing.JFrame {
         this.dispose();
     }//GEN-LAST:event_EspaciosVentanaActionPerformed
 
-    private void CalcularActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_CalcularActionPerformed
+
+    private void GenerarReporteFechasActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_GenerarReporteFechasActionPerformed
         // TODO add your handling code here:
-        try {
-        String totalTexto = jLabel2.getText().replace("S/.", "").replace(",", ".");
-        double total = Double.parseDouble(totalTexto);
-        double efectivo = Double.parseDouble(Efectivo1.getText());
-
-        double vuelto = efectivo - total;
-        if (vuelto < 0) {
-            JOptionPane.showMessageDialog(this, "El monto ingresado es insuficiente.");
-            return;
+        String periodo = PeriododeTiempo.getSelectedItem().toString();
+        String fechaInicio = "";
+        String fechaFin = "";
+        switch (periodo) {
+        case "Día":
+        int d = Integer.parseInt(DiaInicial.getSelectedItem().toString());
+        int m = Integer.parseInt(MesInicial.getSelectedItem().toString());
+        int y = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        fechaInicio = String.format("%04d-%02d-%02d", y, m, d);
+        fechaFin = fechaInicio;
+        break;
+        case "Semana":
+        int ds = Integer.parseInt(DiaInicial.getSelectedItem().toString());
+        int ms = Integer.parseInt(MesInicial.getSelectedItem().toString());
+        int ys = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        java.time.LocalDate ini = java.time.LocalDate.of(ys, ms, ds);
+        java.time.LocalDate fin = ini.plusDays(7);
+        fechaInicio = ini.toString();
+        fechaFin = fin.toString();
+        break;
+        case "Mes":
+        int mes = Integer.parseInt(MesInicial.getSelectedItem().toString());
+        int año = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        fechaInicio = String.format("%04d-%02d-01", año, mes);
+        fechaFin = String.format("%04d-%02d-%02d", año, mes, UltimoDiaMes(mes, año));
+        break;
+        case "Año":
+        int ay = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        fechaInicio = ay + "-01-01";
+        fechaFin = ay + "-12-31";
+        break;
         }
+        ReportData data = obtenerDatosReporte(fechaInicio, fechaFin);
+        calcularEstadisticas(data);
+        generarPDF(data, fechaInicio, fechaFin, "FULL");
+    }//GEN-LAST:event_GenerarReporteFechasActionPerformed
 
-        DecimalFormat df = new DecimalFormat("0.00");
-        Vuelto.setText("S/." + df.format(vuelto));
-    } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Error en el cálculo: " + e.getMessage());
-    }
-    }//GEN-LAST:event_CalcularActionPerformed
-
-    private void jTextFieldBuscadorPorPlacaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextFieldBuscadorPorPlacaActionPerformed
+    private void GenerarReporteIndicadoresActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_GenerarReporteIndicadoresActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jTextFieldBuscadorPorPlacaActionPerformed
+        // Genera un PDF con solo la sección de indicadores/estadísticas
+        String[] fechas = construirFechasDesdeUI();
+        String fechaInicio = fechas[0];
+        String fechaFin = fechas[1];
+        ReportData data = obtenerDatosReporte(fechaInicio, fechaFin);
+        calcularEstadisticas(data);
+        // Usamos tipo INDICADORES para que el PDF muestre solo estadísticas relevantes
+        generarPDF(data, fechaInicio, fechaFin, "INDICADORES");
+    }//GEN-LAST:event_GenerarReporteIndicadoresActionPerformed
 
-    private void buscarPorPlaca() {
-    String placa = jTextFieldBuscadorPorPlaca.getText().trim();
-    if (placa.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Ingrese una placa para buscar.");
-        return;
-    }
-
-    DefaultTableModel model = (DefaultTableModel) jTableInformacion.getModel();
-    model.setRowCount(0);
-
-    try (Connection cn = DriverManager.getConnection("jdbc:mysql://localhost/parqueadero", "root", "Overw@tch7300");
-         PreparedStatement ps = cn.prepareStatement(
-            "SELECT dni, nombre, apellido, placa, fecha_ingreso " +
-            "FROM estacionamiento WHERE placa = ? AND estado = 'Ocupado'")) {
-
-        ps.setString(1, placa);
-        ResultSet rs = ps.executeQuery();
-
-        while (rs.next()) {
-            Object[] fila = {
-                rs.getString("dni"),
-                rs.getString("nombre"),
-                rs.getString("apellido"),
-                rs.getString("placa"),
-                rs.getTimestamp("fecha_ingreso")
-            };
-            model.addRow(fila);
-        }
-
-        if (!esRefresco && model.getRowCount() == 0) {
-        JOptionPane.showMessageDialog(this, "No se encontró registro con esa placa o ya fue cobrado.");
-    }
-
-    } catch (SQLException ex) {
-        JOptionPane.showMessageDialog(this, "Error al buscar: " + ex.getMessage());
-    }
-    }  
-    private void jButtonCobrarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCobrarActionPerformed
+    private void GenerarReporteEliminadosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_GenerarReporteEliminadosActionPerformed
         // TODO add your handling code here:
-            int fila = jTableInformacion.getSelectedRow();
-    if (fila == -1) {
-        JOptionPane.showMessageDialog(this, "Seleccione un registro primero.");
-        return;
-    }
+        // Genera un PDF que contiene únicamente los registros eliminados (estado = CANCELADO)
+        String[] fechas = construirFechasDesdeUI();
+        String fechaInicio = fechas[0];
+        String fechaFin = fechas[1];
+        ReportData data = obtenerDatosReporte(fechaInicio, fechaFin);
+        // No necesitamos calcular indicadores para la lista de eliminados, pero lo hacemos por consistencia
+        calcularEstadisticas(data);
+        generarPDF(data, fechaInicio, fechaFin, "ELIMINADOS");
+    }//GEN-LAST:event_GenerarReporteEliminadosActionPerformed
 
-    String dni = jTableInformacion.getValueAt(fila, 0).toString();
-    String placa = jTableInformacion.getValueAt(fila, 3).toString();
-    Timestamp ingreso = Timestamp.valueOf(jTableInformacion.getValueAt(fila, 4).toString());
-    LocalDateTime fechaIngreso = ingreso.toLocalDateTime();
-    LocalDateTime fechaSalida = LocalDateTime.now();
-
-    Duration duracion = Duration.between(fechaIngreso, fechaSalida);
-    double horas = duracion.toMinutes() / 60.0;
-
-    // ---- Calcular total a pagar ----
-    double total;
-    if (horas <= 1) {
-        total = 5.00;
-    } else {
-        int horasCompletas = (int) horas;
-        boolean tieneFraccion = (horas - horasCompletas) > 0;
-        total = (horasCompletas * 5.0) + (tieneFraccion ? 2.5 : 0);
-    }
-
-    DecimalFormat df = new DecimalFormat("0.00");
-    jLabel2.setText("S/." + df.format(total));
-
-    double efectivo;
-    try {
-        efectivo = Double.parseDouble(Efectivo1.getText());
-    } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Ingrese un monto de efectivo válido.");
-        return;
-    }
-
-    double vuelto = efectivo - total;
-    if (vuelto < 0) {
-        JOptionPane.showMessageDialog(this, "El efectivo es insuficiente.");
-        return;
-    }
-
-    Vuelto.setText("S/." + df.format(vuelto));
-
-    try (Connection cn = DriverManager.getConnection("jdbc:mysql://localhost/parqueadero", "root", "Overw@tch7300")) {
-
-        // ---------------------------------------------------------
-        // 1️⃣ OBTENER id_estacionamiento
-        // ---------------------------------------------------------
-        int idEstacionamiento = 0;
-
-        PreparedStatement psID = cn.prepareStatement(
-            "SELECT id_estacionamiento FROM estacionamiento WHERE placa=? AND estado='Ocupado'"
-        );
-        psID.setString(1, placa);
-        ResultSet rs = psID.executeQuery();
-        if (rs.next()) {
-            idEstacionamiento = rs.getInt("id_estacionamiento");
-        } else {
-            JOptionPane.showMessageDialog(this, "No se encontró el ID del estacionamiento.");
-            return;
-        }
-
-        // ---------------------------------------------------------
-        // 2️⃣ INSERTAR REGISTRO EN LA TABLA COBROS
-        // ---------------------------------------------------------
-        PreparedStatement psCobro = cn.prepareStatement(
-            "INSERT INTO cobros (id_estacionamiento, dni, hora_ingreso, hora_salida, cobro, efectivo, vuelto, empleado) "
-            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-
-        psCobro.setInt(1, idEstacionamiento);
-        psCobro.setString(2, dni);
-        psCobro.setTimestamp(3, ingreso);
-        psCobro.setTimestamp(4, Timestamp.valueOf(fechaSalida));
-        psCobro.setDouble(5, total);
-        psCobro.setDouble(6, efectivo);
-        psCobro.setDouble(7, vuelto);
-        psCobro.setString(8, dniUsuario); // empleado que atendió
-
-        psCobro.executeUpdate();
-
-        // ---------------------------------------------------------
-        // 3️⃣ ACTUALIZAR ESTACIONAMIENTO
-        // ---------------------------------------------------------
-        PreparedStatement ps = cn.prepareStatement(
-            "UPDATE estacionamiento SET fecha_salida=?, estado='Finalizado', cobro=? WHERE placa=? AND estado='Ocupado'"
-        );
-
-        ps.setTimestamp(1, Timestamp.valueOf(fechaSalida));
-        ps.setDouble(2, total);
-        ps.setString(3, placa);
-        ps.executeUpdate();
-
-        // ---------------------------------------------------------
-        // 4️⃣ ACTUALIZAR HISTORIAL
-        // ---------------------------------------------------------
+    private void GenerarReporteValores1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_GenerarReporteValores1ActionPerformed
+        // TODO add your handling code here:
+        // Valores: mayor, menor cobro y promedio por vehículo (PDF con esas métricas)
+        String[] fechas = construirFechasDesdeUI();
+        String fechaInicio = fechas[0];
+        String fechaFin = fechas[1];
+        ReportData data = obtenerDatosReporte(fechaInicio, fechaFin);
+        calcularEstadisticas(data);
+        // Tipo VALORES -> mostrará mayor, menor, promedio y lista detallada
+        generarPDF(data, fechaInicio, fechaFin, "VALORES");
         
+    }//GEN-LAST:event_GenerarReporteValores1ActionPerformed
 
-        JOptionPane.showMessageDialog(this, "Cobro registrado correctamente.");
-        esRefresco = true;
-        buscarPorPlaca();
-        esRefresco = false;
+    private void GenerarReporteIngresosActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_GenerarReporteIngresosActionPerformed
+        // Ingresos: lista de ingresos por vehículo y total
+        String[] fechas = construirFechasDesdeUI();
+        String fechaInicio = fechas[0];
+        String fechaFin = fechas[1];
+        ReportData data = obtenerDatosReporte(fechaInicio, fechaFin);
+        calcularEstadisticas(data);
+        generarPDF(data, fechaInicio, fechaFin, "INGRESOS");
+    }//GEN-LAST:event_GenerarReporteIngresosActionPerformed
+
+    private String[] construirFechasDesdeUI() {
+        String periodo = PeriododeTiempo.getSelectedItem().toString();
+        String fechaInicio = "";
+        String fechaFin = "";
+        switch (periodo) {
+        case "Día":
+        int d = Integer.parseInt(DiaInicial.getSelectedItem().toString());
+        int m = Integer.parseInt(MesInicial.getSelectedItem().toString());
+        int y = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        fechaInicio = String.format("%04d-%02d-%02d", y, m, d);
+        fechaFin = fechaInicio;
+        break;
+        case "Semana":
+        int ds = Integer.parseInt(DiaInicial.getSelectedItem().toString());
+        int ms = Integer.parseInt(MesInicial.getSelectedItem().toString());
+        int ys = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        java.time.LocalDate ini = java.time.LocalDate.of(ys, ms, ds);
+        java.time.LocalDate fin = ini.plusDays(7);
+        fechaInicio = ini.toString();
+        fechaFin = fin.toString();
+        break;
+        case "Mes":
+        int mes = Integer.parseInt(MesInicial.getSelectedItem().toString());
+        int año = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        fechaInicio = String.format("%04d-%02d-01", año, mes);
+        fechaFin = String.format("%04d-%02d-%02d", año, mes, UltimoDiaMes(mes, año));
+        break;
+        case "Año":
+        int ay = Integer.parseInt(AñoInicial.getSelectedItem().toString());
+        fechaInicio = ay + "-01-01";
+        fechaFin = ay + "-12-31";
+        break;
+        }
+        return new String[]{fechaInicio, fechaFin};
+        }
 
 
-    } catch (SQLException ex) {
-        JOptionPane.showMessageDialog(this, "Error al registrar cobro: " + ex.getMessage());
-    }
-    }//GEN-LAST:event_jButtonCobrarActionPerformed
+        private int UltimoDiaMes(int mes, int año) {
+        java.time.YearMonth ym = java.time.YearMonth.of(año, mes);
+        return ym.lengthOfMonth();
+        }
+        // -------------------- CLASES AUX --------------------
+        class ReportData {
+        ArrayList<Registro> registros = new ArrayList<>();
+        ArrayList<Registro> eliminados = new ArrayList<>();
+        double tasaOcupacion;
+        double ingresoTotal;
+        double ingresoPromedioVehiculo;
+        long tiempoPromedioEstancia; // en minutos
+        double mayorIngreso;
+        double menorIngreso;
+        }
 
+
+        class Registro {
+        int id;
+        String dni, nombre, apellido, celular, placa, marca, espacio, estado, empleado;
+        Timestamp fechaIngreso, fechaSalida;
+        double cobro;
+        double efectivo;
+        double vuelto;
+        }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton Calcular;
-    private javax.swing.JTextField Efectivo1;
+    private javax.swing.JComboBox<String> AñoFinal;
+    private javax.swing.JComboBox<String> AñoInicial;
+    private javax.swing.JComboBox<String> DiaFinal;
+    private javax.swing.JComboBox<String> DiaInicial;
     private javax.swing.JButton EmpleadosVentana;
     private javax.swing.JButton EspaciosVentana;
+    private javax.swing.JLabel FechaFinal;
+    private javax.swing.JLabel FechaInicial;
+    private javax.swing.JButton GenerarReporteEliminados;
+    private javax.swing.JButton GenerarReporteFechas;
+    private javax.swing.JButton GenerarReporteIndicadores;
+    private javax.swing.JButton GenerarReporteIngresos;
+    private javax.swing.JButton GenerarReporteValores1;
     private javax.swing.JButton HistorialVentana;
     private javax.swing.JButton IngresoVentana;
+    private javax.swing.JComboBox<String> MesFinal;
+    private javax.swing.JComboBox<String> MesInicial;
+    private javax.swing.JComboBox<String> PeriododeTiempo;
     private javax.swing.JButton SalidaVentana;
-    private javax.swing.JLabel Vuelto;
-    private javax.swing.JButton jButtonCobrar;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
-    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JSeparator jSeparator1;
-    private javax.swing.JSeparator jSeparator2;
-    private javax.swing.JTable jTableInformacion;
-    private javax.swing.JTextField jTextFieldBuscadorPorPlaca;
-    private javax.swing.JToggleButton jToggleButtonBuscadorPorPlaca;
     // End of variables declaration//GEN-END:variables
 }

@@ -73,7 +73,7 @@ public class Historial extends javax.swing.JFrame {
         EmpleadosVentana.setBackground(new java.awt.Color(248, 243, 238));
         EmpleadosVentana.setFont(new java.awt.Font("Roboto ExtraBold", 0, 36)); // NOI18N
         EmpleadosVentana.setForeground(new java.awt.Color(97, 133, 184));
-        EmpleadosVentana.setText("    Empleados");
+        EmpleadosVentana.setText("    Administración");
         EmpleadosVentana.setBorder(null);
         EmpleadosVentana.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         EmpleadosVentana.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
@@ -613,38 +613,40 @@ public class Historial extends javax.swing.JFrame {
     int fila = jTableInformacion.getSelectedRow();
 
     if (fila == -1) {
-        JOptionPane.showMessageDialog(this, "Selecciona un registro para eliminar");
+        JOptionPane.showMessageDialog(this, "Seleccione un registro para eliminar.");
         return;
     }
 
-    int idEstacionamiento = (int) jTableInformacion.getValueAt(fila, 0);
+    int id = Integer.parseInt(jTableInformacion.getValueAt(fila, 0).toString());
 
-    int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "¿Seguro que deseas eliminar este registro?",
+    int confirmar = JOptionPane.showConfirmDialog(this,
+            "¿Seguro que quieres eliminar este registro?",
             "Confirmación",
-            JOptionPane.YES_NO_OPTION
-    );
+            JOptionPane.YES_NO_OPTION);
 
-    if (confirm != JOptionPane.YES_OPTION) {
+    if (confirmar != JOptionPane.YES_OPTION) {
         return;
     }
 
     try (Connection conn = Conexion.getInstance()) {
-        String sql = "UPDATE estacionamiento SET estado = 'CANCELADO' WHERE id_estacionamiento = ?";
+
+        // 🔥 IMPORTANTE: guardar fecha/hora de salida al eliminar
+        String sql = """
+            UPDATE estacionamiento
+            SET estado = 'CANCELADO',
+                fecha_salida = NOW()      -- <<< AQUÍ SE GUARDA LA HORA DE SALIDA
+            WHERE id_estacionamiento = ?
+            """;
+
         PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setInt(1, idEstacionamiento);
+        ps.setInt(1, id);
+        ps.executeUpdate();
 
-        int filasAfectadas = ps.executeUpdate();
+        JOptionPane.showMessageDialog(this, "Cliente eliminado correctamente.");
 
-        if (filasAfectadas > 0) {
-            JOptionPane.showMessageDialog(this, "Registro eliminado (lógicamente).");
-            cargarClientes();  // 🔄 refresca la tabla
-        } else {
-            JOptionPane.showMessageDialog(this, "No se pudo eliminar el registro.");
-        }
+        cargarClientes(); // recargar tabla
 
-    } catch (SQLException e) {
+    } catch (Exception e) {
         JOptionPane.showMessageDialog(this, "Error al eliminar: " + e.getMessage());
     }
     }//GEN-LAST:event_EliminarActionPerformed

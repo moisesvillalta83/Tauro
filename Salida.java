@@ -7,6 +7,24 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Chunk;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.pdf.draw.LineSeparator;
+import java.awt.Desktop;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.text.SimpleDateFormat;
+
 
 public class Salida extends javax.swing.JFrame {
     
@@ -82,7 +100,7 @@ public class Salida extends javax.swing.JFrame {
         EmpleadosVentana.setBackground(new java.awt.Color(248, 243, 238));
         EmpleadosVentana.setFont(new java.awt.Font("Roboto ExtraBold", 0, 36)); // NOI18N
         EmpleadosVentana.setForeground(new java.awt.Color(97, 133, 184));
-        EmpleadosVentana.setText("    Empleados");
+        EmpleadosVentana.setText("    Administración");
         EmpleadosVentana.setBorder(null);
         EmpleadosVentana.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         EmpleadosVentana.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
@@ -341,7 +359,7 @@ public class Salida extends javax.swing.JFrame {
     DefaultTableModel model = (DefaultTableModel) jTableInformacion.getModel();
     model.setRowCount(0);
 
-    try (Connection cn = DriverManager.getConnection("jdbc:mysql://localhost/parqueadero", "root", "Overw@tch7300");
+    try (Connection cn = Conexion.getInstance();
          PreparedStatement ps = cn.prepareStatement(
             "SELECT dni, nombre, apellido, placa, fecha_ingreso " +
             "FROM estacionamiento WHERE placa = ? AND estado = 'Ocupado'")) {
@@ -414,7 +432,7 @@ public class Salida extends javax.swing.JFrame {
 
     Vuelto.setText("S/." + df.format(vuelto));
 
-    try (Connection cn = DriverManager.getConnection("jdbc:mysql://localhost/parqueadero", "root", "Overw@tch7300")) {
+    try (Connection cn = Conexion.getInstance();) {
 
         // ---------------------------------------------------------
         // 1️⃣ OBTENER id_estacionamiento
@@ -470,9 +488,154 @@ public class Salida extends javax.swing.JFrame {
         
 
         JOptionPane.showMessageDialog(this, "Cobro registrado correctamente.");
-        esRefresco = true;
-        buscarPorPlaca();
-        esRefresco = false;
+        
+        try {
+        // ============================
+        // 1. DOCUMENTO
+        // ============================
+        Document doc = new Document(PageSize.A4, 40, 40, 40, 40);
+
+        String userHome = System.getProperty("user.home");
+        String desktopPath = userHome + File.separator + "Desktop";
+
+        String fileName = "Ticket_Estacionamiento_" + placa + "_" + System.currentTimeMillis() + ".pdf";
+
+        PdfWriter.getInstance(doc, new FileOutputStream(desktopPath + File.separator + fileName));
+        doc.open();
+
+        // ============================
+        // 2. FUENTES
+        // ============================
+        Font tituloGrande = new Font(Font.FontFamily.HELVETICA, 26, Font.BOLD);
+        Font encabezadoNegrita = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
+        Font encabezadoNormal = new Font(Font.FontFamily.HELVETICA, 12);
+        Font tituloFont = new Font(Font.FontFamily.HELVETICA, 20, Font.BOLD);
+        Font subTituloFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+        Font textoFont = new Font(Font.FontFamily.HELVETICA, 13);
+
+        // ============================
+        // 3. ENCABEZADO
+        // ============================
+        Paragraph tituloPrincipal = new Paragraph("TAURO", tituloGrande);
+        tituloPrincipal.setAlignment(Element.ALIGN_CENTER);
+        tituloPrincipal.setSpacingAfter(8);
+        doc.add(tituloPrincipal);
+
+        Paragraph infoEmpresa = new Paragraph();
+        infoEmpresa.setAlignment(Element.ALIGN_LEFT);
+
+        infoEmpresa.add(new Phrase("Empresa: ", encabezadoNegrita));
+        infoEmpresa.add(new Phrase("TAURO S.A.C.\n", encabezadoNormal));
+
+        infoEmpresa.add(new Phrase("RUC: ", encabezadoNegrita));
+        infoEmpresa.add(new Phrase("78547896213\n", encabezadoNormal));
+
+        infoEmpresa.add(new Phrase("Dirección: ", encabezadoNegrita));
+        infoEmpresa.add(new Phrase("Av. Arenales 1923, Lince\n", encabezadoNormal));
+
+        infoEmpresa.add(new Phrase("Correo: ", encabezadoNegrita));
+        infoEmpresa.add(new Phrase("tauro.estacionamiento@gmail.com\n", encabezadoNormal));
+
+        infoEmpresa.add(new Phrase("Celular: ", encabezadoNegrita));
+        infoEmpresa.add(new Phrase("912987354\n", encabezadoNormal));
+
+        infoEmpresa.setSpacingAfter(20);
+        doc.add(infoEmpresa);
+
+        // ============================
+        // 4. TÍTULO
+        // ============================
+        Paragraph titulo = new Paragraph("REPORTE DEL ESTACIONAMIENTO", tituloFont);
+        titulo.setAlignment(Element.ALIGN_CENTER);
+        titulo.setSpacingAfter(20);
+        doc.add(titulo);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+
+        // ============================
+        // 5. SECCIÓN DE DATOS EN COLUMNA
+        // ============================
+        Paragraph datos = new Paragraph();
+        datos.setAlignment(Element.ALIGN_LEFT);
+        datos.setSpacingBefore(10);
+        datos.setSpacingAfter(10);
+
+        datos.add(new Phrase("DNI: ", encabezadoNegrita));
+        datos.add(new Phrase(dni + "\n", textoFont));
+
+        // Obtener nombre + apellido
+        String nombre = "";
+        String apellido = "";
+
+        try (Connection cn2 = Conexion.getInstance()) {
+            PreparedStatement psDatos = cn2.prepareStatement(
+                "SELECT nombre, apellido FROM estacionamiento WHERE placa = ? LIMIT 1"
+            );
+            psDatos.setString(1, placa);
+            ResultSet rs2 = psDatos.executeQuery();
+            if (rs2.next()) {
+                nombre = rs2.getString("nombre");
+                apellido = rs2.getString("apellido");
+            }
+        }
+
+
+        datos.add(new Phrase("Nombre: ", encabezadoNegrita));
+        datos.add(new Phrase(nombre + " " + apellido + "\n", textoFont));
+
+        datos.add(new Phrase("Placa: ", encabezadoNegrita));
+        datos.add(new Phrase(placa + "\n", textoFont));
+
+        datos.add(new Phrase("Ingreso: ", encabezadoNegrita));
+        datos.add(new Phrase(sdf.format(ingreso) + "\n", textoFont));
+
+        datos.add(new Phrase("Salida: ", encabezadoNegrita));
+        datos.add(new Phrase(sdf.format(Timestamp.valueOf(fechaSalida)) + "\n", textoFont));
+
+        datos.add(new Phrase("Efectivo: ", encabezadoNegrita));
+        datos.add(new Phrase("S/ " + df.format(efectivo) + "\n", textoFont));
+
+        datos.add(new Phrase("Cobro: ", encabezadoNegrita));
+        datos.add(new Phrase("S/ " + df.format(total) + "\n", textoFont));
+
+        doc.add(datos);
+
+        // ============================
+        // 6. DESPEDIDA
+        // ============================
+        Paragraph gracias = new Paragraph("¡Gracias por su visita!", subTituloFont);
+        gracias.setAlignment(Element.ALIGN_CENTER);
+        gracias.setSpacingBefore(25);
+        doc.add(gracias);
+
+        doc.close();
+        // Abrir automáticamente el PDF
+        try {
+            File pdfFile = new File(desktopPath + File.separator + fileName);
+            if (pdfFile.exists()) {
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().open(pdfFile);
+                } else {
+                    JOptionPane.showMessageDialog(this, "El entorno no permite abrir el archivo automáticamente.");
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "No se encontró el archivo PDF.");
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error al abrir el PDF: " + e.getMessage());
+        }
+
+
+        JOptionPane.showMessageDialog(this, "PDF generado en el Escritorio:\n" + fileName);
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al generar PDF: " + ex.getMessage());
+    }
+
+
+    esRefresco = true;
+    buscarPorPlaca();
+    esRefresco = false;
 
 
     } catch (SQLException ex) {

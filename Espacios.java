@@ -94,7 +94,7 @@ public class Espacios extends javax.swing.JFrame {
         EmpleadosVentana.setBackground(new java.awt.Color(248, 243, 238));
         EmpleadosVentana.setFont(new java.awt.Font("Roboto ExtraBold", 0, 36)); // NOI18N
         EmpleadosVentana.setForeground(new java.awt.Color(97, 133, 184));
-        EmpleadosVentana.setText("    Empleados");
+        EmpleadosVentana.setText("    Administración");
         EmpleadosVentana.setBorder(null);
         EmpleadosVentana.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         EmpleadosVentana.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
